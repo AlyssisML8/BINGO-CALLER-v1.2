@@ -43,7 +43,6 @@ def main():
                 flag = False
             nums.append(num)
             lastfive = nums[-5:]
-            os.system('cls')
             labelText = ''
             counter = 0
             for number in lastfive:
