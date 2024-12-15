@@ -1,104 +1,99 @@
+from tkinter import Tk, ttk, Label, Entry
 import random
 import pyttsx3 as tts
-from tkinter import *
-from tkinter import ttk
-
-engine = tts.init()
-root = Tk()
-root.title('BINGO CALLER v1.0')
 
 
-def exitfromwindow():
-    root.after_cancel(updated_window)
-    numbersInWindow.pack_forget()
-    exitbtn.pack_forget()
-    showWinCheck()
+def bingo_caller(numbers_on_window):
+    if len(called_numbers) < 60:
+        number = next(seed)
+        called_numbers.append(number)
 
+        last_five = called_numbers[-5:]
+        numbers_on_window.configure(text='\n'.join(last_five))
 
-def mainInterface():
-    global numbersInWindow
-    global exitbtn
-    numbersInWindow = Label(root, text='No numbers.', font='Arial, 25', anchor=CENTER, foreground='#4287f5', width=15)
-    numbersInWindow.pack()
-    exitbtn = ttk.Button(root, text='Exit', command=exitfromwindow)
-    exitbtn.pack()
+        engine.say(number)
+        engine.runAndWait()
 
-
-mainInterface()
-
-numbers = []
-flag = True
-
-voices = engine.getProperty('voices')
-engine.setProperty('voice', voices[0].id)
-engine.setProperty('rate', 110)
-engine.setProperty('volume', 1.0)
-
-
-def main():
-    global flag
-    global numbers
-    global numbersInWindow
-    if len(nums) < 60 and flag:
-        num = random.randrange(1, 61)
-        if num not in nums:
-            if len(nums) == 60:
-                flag = False
-            nums.append(num)
-            lastfive = nums[-5:]
-            labelText = ''
-            counter = 0
-            for number in lastfive:
-                counter += 1
-                if counter == len(lastfive):
-                    labelText += str(number)
-                else:
-                    labelText += str(number) + '\n'
-            numbersInWindow.configure(text=labelText)
-            num = str(num)
-            engine.say(num)
-            engine.runAndWait()
     global updated_window
-    main_window = root.after(2000, main)
+    updated_window = root.after(1500, lambda: bingo_caller(numbers_on_window))
 
 
-updated_window = root.after(1000, main)
+def shuffled(iterable):
+    return random.sample(iterable, len(iterable))
 
 
-def continue_game():
-    checkfornums.pack_forget()
-    checkbtn.pack_forget()
-    continuegame.pack_forget()
-    root.after(1000, main)
-    mainInterface()
-    pass
+def main_interface():
+    label = Label(root, text='No numbers.', font='Arial, 25', anchor='center', foreground='#4287f5', width=15)
+    label.pack()
+
+    button = create_button('Exit', lambda: destroy_main_window(label, button))
+
+    return label
 
 
-def showWinCheck():
-    global checkfornums
-    checkfornums = Entry(root, width=50)
-    checkfornums.pack(pady=10, padx=5)
+def create_button(text, command, **kwargs):
+    button = ttk.Button(root, text=text, command=command)
+    button.pack(**kwargs)
+    return button
 
-    def check():
-        text = checkfornums.get()
-        if text.isdigit():
-            if int(text) == 61:
-                return
-            elif int(text) in numbers:
-                engine.say('Sí')
-                engine.runAndWait()
-            else:
-                engine.say('No')
-                engine.runAndWait()
 
-    global checkbtn
-    checkbtn = ttk.Button(root, text='Verificar', command=check)
-    checkbtn.pack()
-    global continuegame
-    continuegame = ttk.Button(root, text='Continuar el juego', command=continue_game)
-    continuegame.pack(pady=10, padx=5)
+def destroy_main_window(label, button):
+    root.after_cancel(updated_window)
+    label.pack_forget()
+    button.pack_forget()
+    checking_window()
+
+
+def checking_window():
+    window_elements = []
+    number_input = Entry(root, width=50)
+    number_input.pack(padx=5, pady=10)
+    window_elements.append(number_input)
+
+    check_button = create_button('Verificar', lambda: check_number(number_input.get()))
+    window_elements.append(check_button)
+
+    text = 'Continuar el juego'
+    continue_game_button = create_button(
+        text=text,
+        command=lambda: continue_game(window_elements, continue_game_button),
+        padx=5,
+        pady=10
+    )
     return
 
 
+def continue_game(window_elements, self_button):
+    for element in window_elements:
+        element.pack_forget()
+    self_button.pack_forget()
+    root.after(1000, lambda: bingo_caller(main_interface()))
+
+
+def check_number(input_text):
+    if input_text.isdigit():
+        engine.say(("No", "Sí")[input_text in called_numbers])
+        engine.runAndWait()
+
+
 if __name__ == '__main__':
+    engine = tts.init()
+    root = Tk()
+    root.title('BINGO CALLER v1.1')
+    root.iconbitmap('img/bingo.ico')
+
+    seed = map(str, shuffled(range(1, 61)))
+    called_numbers = []
+
+    voice = engine.getProperty('voices')[0].id
+    properties = {
+        "voice": voice,
+        "rate": 110,
+        "volume": 1.0
+    }
+    for name, value in properties.items():
+        engine.setProperty(name, value)
+
+    updated_window = root.after(1000, lambda: bingo_caller(main_interface()))
+
     root.mainloop()
